@@ -1,5 +1,6 @@
 local Log = require"log"
 local Rule = require "rule"
+local ObjProxy = require"objproxy"
 
 local table = table
 local pairs = pairs
@@ -50,27 +51,27 @@ end
 
 local hist_handles = {
     pass_limit = function (self) return Rule.pass_limit end,
-    leader = function (self) return self.users[self.leader].name end,
+    leader = function (self) return self:get_name(self.p.leader) end,
     stage = function (self)
         local l = {}
-        for _,uid in ipairs(self.stage) do
-            table.insert(l, self.users[uid].name)
+        for _,uid in ipairs(self.p.stage) do
+            table.insert(l, self:get_name(uid))
         end
         return _seri(l)
     end,
 
     vote_yes = function ()
         local l = {}
-        for uid,flag in pairs(self.votes) do
-            if flag then table.insert(l, self.users[uid].name) end
+        for uid,flag in pairs(self.p.votes) do
+            if flag then table.insert(l, self:get_name(uid)) end
         end
         return _seri(l)
     end,
 
     vote_no = function ()
         local l = {}
-        for uid,flag in pairs(self.votes) do
-            if not flag then table.insert(l, self.users[uid].name) end
+        for uid,flag in pairs(self.p.votes) do
+            if not flag then table.insert(l, self:get_name(uid)) end
         end
         return _seri(l)
     end
@@ -82,12 +83,16 @@ function mt:add_history()
         l[i] = string.gsub(s, "{([%w_]+)}", function (w) return hist_handles[w]() end)
     end
 
-    local hist = ("%d.%d  "):format(self.round, self.pass) .. table.concat(l, "\n\t")
+    local hist = ("%d.%d  "):format(self.p.round, self.p.pass) .. table.concat(l, "\n\t")
     table.insert(self.history, hist)
 end
 
+function mt:get_name(uid)
+    return self.users[uid].name
+end
+
 function mt:vote_in_audit(userid, approve)
-    self.votes[userid] = approve
+    self.p.votes[userid] = approve
     local total, yes = _total()
     if total < #self.uidlist then
         return
@@ -103,42 +108,42 @@ function mt:vote_in_audit(userid, approve)
 end
 
 function mt:end_game()
-    self.mode = "end"
+    self.p.mode = "end"
 end
 
 function mt:next_pass()
-    if self.pass >= Rule.pass_limit then
+    if self.p.pass >= Rule.pass_limit then
         self:add_history("任务失败! 提案连续{pass_limit}次没有通过")
         return self:next_round(false)
     end
 
-    self.mode = "plan"
-    self.stage = {}
-    self.votes = {}
-    self.pass = self.pass + 1
+    self.p.mode = "plan"
+    self.p.stage = {}
+    self.p.votes = {}
+    self.p.pass = self.p.pass + 1
 
     for i,uid in ipairs(self.uidlist) do
-        if uid == self.leader then
+        if uid == self.p.leader then
             local j = i == #self.uidlist and 1 or i+1
-            self.leader = self.uidlist[j]
+            self.p.leader = self.uidlist[j]
             break
         end
     end
 end
 
 function mt:next_round(success)
-    if self.round == #self.stage_per_round then
+    if self.p.round == #self.stage_per_round then
         self:end_game()
         return
     end
 
-    self.round = self.round + 1
-    self.pass = 0
+    self.p.round = self.p.round + 1
+    self.p.pass = 0
     if success then
-        self.round_success = self.round_success + 1
+        self.p.round_success = self.p.round_success + 1
     end
 
-    if self.round > #self.stage_per_round then
+    if self.p.round > #self.stage_per_round then
         self:end_game()
     else
         self:next_pass()
@@ -150,13 +155,13 @@ function mt:vote_in_quest(userid, approve)
         return false
     end
 
-    self.votes[userid] = approve
+    self.p.votes[userid] = approve
     local total, yes = _total()
-    if total ~= #self.stage then
+    if total ~= #self.p.stage then
         return
     end
 
-    local needtwo = self.stage_per_round[self.round] < 0
+    local needtwo = self.stage_per_round[self.p.round] < 0
     if yes == total or needtwo and yes == total - 1 then
         self:add_history("任务成功.  参与者: {stage}", ("出现%d张失败票"):format(total-yes))
         self:next_round(true)
@@ -166,17 +171,33 @@ function mt:vote_in_quest(userid, approve)
     end
 end
 
-function mt:vote(userid, approve)
-    local function in_stage()
-        for _,uid in ipairs(self.stage) do
-            if uid == userid then return true end
-        end
-        return false
+-- 提名
+function mt:stage(userid, stagelist)
+    if self.p.mode ~= "plan" or userid ~= self.p.leader then
+        Log.Error("stage invalid", self.p.mode, userid)
+        return
     end
 
-    if self.mode == "audit" then
+    if #stagelist ~= math.abs(self.stage_per_round(self.p.round)) then
+        Log.Error("wrong stagelist length", stagelist)
+        return
+    end
+    
+    for _,tuid in ipairs(stagelist) do
+        if not self.users[tuid] then
+            Log.Error("stage invalid stagelist", tuid)
+            return
+        end
+    end
+
+    self.p.stage = stagelist
+    self.p.mode = "audit"
+end
+
+function mt:vote(userid, approve)
+    if self.p.mode == "audit" then
         self:vote_in_audit(userid, approve)
-    elseif self.mode == "quest" then
+    elseif self.p.mode == "quest" then
         self:vote_in_quest(userid, approve)
     end
 end
@@ -206,35 +227,32 @@ function mt:visible_info(userid)
     return ret
 end
 
-function mt:hash()
-    local t = {
-        self.round,
-        self.pass,
-        self.leader,
-        self.stage,
-        self.mode,
-        self.stage_per_round[self.round],
-        self.round_success,
-        self.mode,
-    }
+function mt:users_info()
+    local ret = {}
+    for _,uid in ipairs(self.uildlist) do
+        local u = self.users[uid]
+        table.insert(ret, {uid = u.uid, name = u.name})
+    end
+
+    return ret
 end
 
 function mt:info(userid)
     local ret = {}
     return {
         visible = self:visible_info(userid),
+        users = self:users_info(),
         role = self.users[userid] and self.users[userid].name,
         evil_count = #self.uidlist - Rule.camp_good[#self.uidlist],
         history = self.history,
 
-        round = self.round,
-        pass = self.pass,
-        leader = self.leader,
-        stage = self.stage,
-        mode = self.mode,
-        need = self.stage_per_round[self.round],
-        round_success = self.round_success,
-        mode = self.mode,
+        round = self.p.round,
+        pass = self.p.pass,
+        leader = self.p.leader,
+        stage = self.p.stage,
+        mode = self.p.mode,
+        need = self.stage_per_round[self.p.round],
+        round_success = self.p.round_success,
     }
 end
 
@@ -263,15 +281,19 @@ function M.new(rules, users)
     end
     shuffle(self.uidlist)
 
-    self.stage_per_round = Rule.stage_per_round[#self.uidlist] -- 每轮的任务投票数
-    self.votes = {}          -- 投票统计，选举阶段和任务阶段共用
-    self.round = 1,          -- 第n轮
-    self.pass =1,            -- 第n次提案
-    self.round_success = 0,  -- 成功任务数
-    self.leader = self.uidlist[1], -- 选举阶段的领袖
-    self.stage = {},         -- 被提名的人
-    self.history = {},
-    self.mode = "plan"      -- plan/audit/quest/end
+    self.history = {}
+    -- 每轮的任务投票数
+    self.stage_per_round = Rule.stage_per_round[#self.uidlist]
+
+    self.p = ObjProxy.new{
+        votes = {}          -- 投票统计，选举阶段和任务阶段共用
+        round = 1,          -- 第n轮
+        pass =1,            -- 第n次提案
+        round_success = 0,  -- 成功任务数
+        leader = self.uidlist[1], -- 选举阶段的领袖
+        stage = {},         -- 被提名的人
+        mode = "plan"      -- plan/audit/quest/end
+    }
 
     return self
 end
