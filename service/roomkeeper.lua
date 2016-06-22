@@ -20,8 +20,7 @@ function roomkeeper.open()
 	repeat
 		room = math.random(MAXROOMID)
 	until house[room] == nil
-	local r = assert(skynet.newservice "room")
-	skynet.call(r, "lua", "init", room)
+	local r = assert(skynet.newservice "room", room)
 	house.n = house.n + 1
 	house[room] = r
 	return true, room

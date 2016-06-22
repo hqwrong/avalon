@@ -31,6 +31,7 @@ M.camp_name = {
 }
 
 -- 4: 表示只能看见派别，不能看见身份
+-- 3： 兰斯洛特规则
 M.visible = {
 --   梅林   派西维尔     兰(正)  骑士   刺客  莫德雷德       莫甘娜  兰(邪)    奥伯伦  爪牙
    { false, false,     false,   false, true,  false,       true,   true,     true,  true },   --梅林
@@ -137,6 +138,7 @@ end
 
 M.pass_limit = 5
 
+-- 没轮任务需要的投票数，负数表示至少两张反对票该任务才失败
 M.stage_per_round = {
     [5] = {2,3,2,3,3},
     [6] = {2,3,4,3,4},
