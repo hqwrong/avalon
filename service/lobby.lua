@@ -2,6 +2,7 @@ local skynet = require "skynet"
 local urllib = require "http.url"
 local staticfile = require "staticfile"
 local string = string
+local Log = require"log"
 
 local userservice
 local roomkeeper
@@ -48,6 +49,7 @@ skynet.start(function()
 			local args = body
             local ret = {username = username}
 			if args then
+                Log.Infof("lobby request: action[%s], userid[%d], username[%s]", args.action, userid, username)
 				local f = action[args.action]
                 if f then
                     ret = f(userid, username, args)

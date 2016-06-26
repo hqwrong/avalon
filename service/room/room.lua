@@ -97,7 +97,7 @@ function mt:begin_game(userid)
 
     local users = {}
     for uid,u in pairs(self.p.users) do
-        if u.status = READY then
+        if u.status == READY then
             users[uid] = {name = u.name,  uid = u.uid}
         end
     end

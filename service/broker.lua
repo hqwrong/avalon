@@ -3,9 +3,9 @@ local socket = require "socket"
 local httpd = require "http.httpd"
 local sockethelper = require "http.sockethelper"
 local urllib = require "http.url"
-local log = require "log"
 local staticfile = require "staticfile"
 local json = require"json"
+local Log = require"log"
 
 local roomkeeper
 local userservice
@@ -86,6 +86,8 @@ end
 local function handle_socket(id)
 	-- limit request body size to 8192 (you can pass nil to unlimit)
 	local code, url, method, header, body = httpd.read_request(sockethelper.readfunc(id), 8192)
+
+    Log.Infof("http %s: url[%s],body[%s]", method, url, body)
     if body and body ~= "" then
         body = json.decode(body)
     end
@@ -110,6 +112,7 @@ local function handle_socket(id)
 				end
 			else
                 local userid, username = get_userid(header)
+                Log.Infof("broker request: action[%s], userid[%d], username[%s]", action, userid, username)
 				local f = action_method[action] or enter_room
                 
                 local ret, c = f(body, userid, username, action)
@@ -122,7 +125,7 @@ local function handle_socket(id)
 		end
 	else
 		if url ~= sockethelper.socket_error then
-			log.printf("%s error: %s", address_table[id], url)
+			Log.printf("%s error: %s", address_table[id], url)
 		end
 	end
 end

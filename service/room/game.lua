@@ -77,7 +77,7 @@ local hist_handles = {
     end
 }
 
-function mt:add_history()
+function mt:add_history(...)
     local l = {...}
     for i,s in ipairs(l) do
         l[i] = string.gsub(s, "{([%w_]+)}", function (w) return hist_handles[w]() end)
@@ -286,7 +286,7 @@ function M.new(rules, users)
     self.stage_per_round = Rule.stage_per_round[#self.uidlist]
 
     self.p = ObjProxy.new{
-        votes = {}          -- 投票统计，选举阶段和任务阶段共用
+        votes = {},          -- 投票统计，选举阶段和任务阶段共用
         round = 1,          -- 第n轮
         pass =1,            -- 第n次提案
         round_success = 0,  -- 成功任务数

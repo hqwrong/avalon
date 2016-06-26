@@ -7,23 +7,22 @@ local json = require"json"
 local objproxy = require"objproxy"
 local Room = require"room"
 
+Log = require"log"
+
+
 local content = staticfile["room.html"]
 
 local ALIVETIME = 100 * 60 * 10 -- 10 minutes
 local PUSH_TIME = 100 * 60
 
-Log = {
-    Info = print,
-    Warn = print,
-    Error = print,
-}
-
 local roomid = ...
+
+Log.tag(string.format("room:%d", roomid))
 
 local R = {
     version = 1,
-    R.room = nil,
-    R.game = nil,
+    room = nil,
+    game = nil,
     push_tbl={},
 }
 
@@ -63,7 +62,7 @@ local function roominfo(userid)
     return json.encode(ret)
 end
 
-function room.web(userid, username)
+function cmds.web(userid, username)
 	R.room:enter(userid, username)
 	return content
 end
@@ -199,12 +198,12 @@ skynet.start(function()
             return
         end
 
+        Log.Info("room request:", cmd, ...)
         local ok, ret = xpcall(f, debug.traceback, ...)
         if not ok then
             Log.Error(ret)
             ret = nil
         end
         skynet.retpack(ret)
-        end
 	end)
 end)
