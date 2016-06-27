@@ -49,7 +49,7 @@ skynet.start(function()
 			local args = body
             local ret = {username = username}
 			if args then
-                Log.Infof("lobby request: action[%s], userid[%d], username[%s]", args.action, userid, username)
+                Log.Infof("lobby request: action[%s], userid[%s], username[%s]", args.action, userid, username)
 				local f = action[args.action]
                 if f then
                     ret = f(userid, username, args)

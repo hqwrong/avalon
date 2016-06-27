@@ -9,6 +9,7 @@ local lastid = 0
 local function new_username(userid)
 	local username = "u"..tostring(userid)
 	users[userid] = username
+    print(">>> new user", userid, username)
 	return username
 end
 

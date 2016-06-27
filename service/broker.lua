@@ -34,6 +34,7 @@ local function get_userid(header)
 			end
 		end
 	end
+
 	return skynet.call(userservice, "lua", userid)
 end
 
@@ -112,7 +113,7 @@ local function handle_socket(id)
 				end
 			else
                 local userid, username = get_userid(header)
-                Log.Infof("broker request: action[%s], userid[%d], username[%s]", action, userid, username)
+                Log.Infof("broker request: action[%s], userid[%s], username[%s]", action, userid, username)
 				local f = action_method[action] or enter_room
                 
                 local ret, c = f(body, userid, username, action)
