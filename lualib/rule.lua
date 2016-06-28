@@ -1,5 +1,5 @@
 --[[ 规则列表
-	"梅林",	-- 1
+	"梅林+刺客",	-- 1
 	"派西维尔", -- 2
 	"莫甘娜", -- 3
 	"莫德雷德", -- 4
@@ -34,16 +34,16 @@ M.camp_name = {
 -- 3： 兰斯洛特规则
 M.visible = {
 --   梅林   派西维尔     兰(正)  骑士   刺客  莫德雷德       莫甘娜  兰(邪)    奥伯伦  爪牙
-   { false, false,     false,   false, true,  false,       true,   true,     true,  true },   --梅林
-   { 4,      false,     false,   false, true,  false,       4,       false,    false, false },  --派西维尔
-   { false, false,     false,   false, false, false,       false,   3,        false, false },  --兰(正)
-   { false, false,     false,   false, false, false,       false,  false,    false, false },  --正
-   { false, false,     false,   false, false, 4,            4,       true,     false, 4 },	  --刺客
-   { false, false,     false,   false, 4,      false,       4,       true,     false, 4 },   --莫德雷德
-   { false, false,     false,   false, 4,      4,            false,  true,     false, 4 },   --莫甘娜
-   { false, false,      3,       false, 3,      3,            3,       false,     false, 3 },      --兰(邪)
-   { false, false,     false,   false, false, false,       false,  false,    false, false },  --奥伯伦
-   { false, false,     false,   false, false, true,        true,   true,     false, true },	  --刺客
+   [1] = { false, false,     false,   false, true,  false,       true,   true,     true,  true },   --梅林
+   [2] = { 4,      false,     false,   false, true,  false,       4,       false,    false, false },  --派西维尔
+   [3] = { false, false,     false,   false, false, false,       false,   3,        false, false },  --兰(正)
+   [4] = { false, false,     false,   false, false, false,       false,  false,    false, false },  --正
+   [5] = { false, false,     false,   false, false, 4,            4,       true,     false, 4 },	  --刺客
+   [6] = { false, false,     false,   false, 4,      false,       4,       true,     false, 4 },   --莫德雷德
+   [7] = { false, false,     false,   false, 4,      4,            false,  true,     false, 4 },   --莫甘娜
+   [8] = { false, false,      3,       false, 3,      3,            3,       false,     false, 3 },      --兰(邪)
+   [9] = { false, false,     false,   false, false, false,       false,  false,    false, false },  --奥伯伦
+   [10] = { false, false,     false,   false, false, true,        true,   true,     false, true },	  --刺客
 }
 
 local camp_good = {
@@ -147,6 +147,8 @@ M.stage_per_round = {
     [9] = {3,4,4,-5,5},
     [10] = {3,4,4,-5,5},
 }
+
+M.nround = #select(2, next(M.stage_per_round))
 
 M.camp_good = camp_good
 return M

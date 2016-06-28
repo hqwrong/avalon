@@ -26,12 +26,21 @@ log = {
     end,
 
     Warn = function (...)
-        print(("[%s]<Warn %s>"):format(fmttime(), Tag),  ...)
+        print(("[%s]<WARN %s>"):format(fmttime(), Tag),  ...)
+    end,
+
+    Warnf = function (fmt, ...)
+        print(("[%s]<WARN %s>"):format(fmttime(), Tag),  string.format(fmt,...))
     end,
 
     Error = function (...)
         print(("[%s]<ERR %s>"):format(fmttime(), Tag),  ...)
     end,
+
+    Errorf = function (fmt, ...)
+        print(("[%s]<ERR %s>"):format(fmttime(), Tag),  string.format(fmt,...))
+    end,
+
 }
 
 function log.printf(...)
