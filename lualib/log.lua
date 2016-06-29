@@ -16,29 +16,41 @@ local function fmttime()
 	return cache_str
 end
 
+function pp(logtype, ...)
+    local info = debug.getinfo(2+1, "Sl")
+    
+    print(("[%s %s %s]@%s:%s:"):format(fmttime(), logtype, Tag, info.source, info.currentline),  ...)    
+end
+
+function ppf(logtype, fmt, ...)
+    local info = debug.getinfo(2+1, "Sl")
+    
+    print(("[%s %s %s]%s:%s:"):format(fmttime(), logtype, Tag, info.source, info.currentline),  string.format(fmt, ...))
+end
+
 log = {
     Info = function (...)
-        print(("[%s]<INF %s>"):format(fmttime(), Tag),  ...)
+        pp("INF", ...)
     end,
 
     Infof = function (fmt, ...)
-        print(("[%s]<INF %s>"):format(fmttime(), Tag),  string.format(fmt,...))
+        ppf("INF", fmt, ...)
     end,
 
     Warn = function (...)
-        print(("[%s]<WARN %s>"):format(fmttime(), Tag),  ...)
+        pp("WARN", ...)
     end,
 
     Warnf = function (fmt, ...)
-        print(("[%s]<WARN %s>"):format(fmttime(), Tag),  string.format(fmt,...))
+        ppf("WARN", fmt, ...)
     end,
 
     Error = function (...)
-        print(("[%s]<ERR %s>"):format(fmttime(), Tag),  ...)
+        pp("ERR", ...)
     end,
 
     Errorf = function (fmt, ...)
-        print(("[%s]<ERR %s>"):format(fmttime(), Tag),  string.format(fmt,...))
+        ppf("ERR",fmt, ...)
     end,
 
 }

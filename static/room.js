@@ -3,15 +3,15 @@
 // cookie 获取当前用户的user_id
 // click 操作的 绑定
 
-var room_number, userid, game_status;
+var room_number, userid, game;
 var version = 0;
 var user_ready = false;
+
 
 document.addEventListener("DOMContentLoaded", function(){
     userid = Ejoy.getCookie('userid');
     set_room_number();
-    set_room_content(0, true);
-    //setTimeout(poll, 500)       // 0.5s
+    setTimeout(poll, 500)       // 0.5s
     bind_action()
 
     function set_room_number(){
@@ -20,61 +20,48 @@ document.addEventListener("DOMContentLoaded", function(){
         Ejoy('room_number').html(room_number) 
     }
     
-    // function poll(){
-    //     var req = {
-    //         roomid: room_number,
-    //         action: 'request',
-    //         version: version
-    //     }
-    //     Ejoy.postJSON('/room', req, function(resp){
-    //         console.log('request', resp)
-    //         version = resp.version
-
-    //     })        
-    // }
-
-    function set_room_content(v, poll_begin){
+    function poll(){
         var req = {
             roomid: room_number,
-            status: 'prepare',
             action: 'request',
-            version: v ? v : 0
+            version: version
         }
         Ejoy.postJSON('/room', req, function(resp){
             console.log('request', resp)
-            if(game_status == "game"){return}
-            if (resp.error) {return}
-
-            version = resp.version;
-            if(resp.status){
-                if(resp.status == "game"){
-                    game_status = "game"
-                    prepare_clear()
-                    var avalon = new AvalonGame(userid)
-                    version = 0
-                    return avalon.begin(resp)
-                }
-            }
-            if(resp.users){
-                Ejoy('people_num').html(resp.users.length)
-
-                render_players(resp.users)
-                render_people_status(resp.users)
-                render_prepare_action(resp.users)
-            }
-            if(resp.rules){
-                render_rules(resp.rules)
+            if (!resp.status) {
+                return
             }
 
-            render_game_status(resp.reason)
-            render_begin_button(resp.can_game)
-
-
-            if(poll_begin){
-                console.log("polling")
-                set_room_content(version, true)
+            version = resp.version
+            if (resp.status == "game" && !game) {
+                prepare_clear()
+                game = new AvalonGame(userid)
             }
-        })
+
+            if (resp.status == "game") {
+                game.update(resp)
+            }else{
+                update_room(resp)
+            }
+
+            poll()
+        })        
+    }
+
+    function update_room(resp){
+        if (resp.error) {return}
+
+        // render users
+        Ejoy('people_num').html(resp.users.length)
+        render_players(resp.users)
+        render_people_status(resp.users)
+        render_prepare_action(resp.users)
+        
+        // render rules
+        render_rules(resp.rules)
+
+        render_game_status(resp.reason)
+        render_begin_button(resp.can_game)
     }
 
     function render_game_status(reason) {
@@ -169,12 +156,6 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     function bind_action(){
-        Ejoy('people').on("click", "people_item", function(select_dom){
-            var userid = select_dom.id;
-            console.log(userid)
-            kick_user(userid, select_dom.children[0])
-        });
-
         Ejoy('room_rule').on('click', 'rule_item', function(select_dom){
             var rule_num = select_dom.dataset.rule
             var enabled  = !(select_dom.className.indexOf("rule_enabled") > -1)
@@ -205,84 +186,45 @@ document.addEventListener("DOMContentLoaded", function(){
         })
     }
 
-
-    function kick_user(userid, select_dom){
-        var req = {
-            roomid: room_number,
-            status: 'prepare',
-            action: 'kick',
-            version: version,
-
-            id: userid
-        }
-        Ejoy.postJSON('/room', req, function(resp){
-            if(!resp.error){
-                select_dom.className = select_dom.className.replace(/status_\d/, 'status_2')
-                set_room_content()
-            }
-        });
-        
-    }
-
     function set_user_name(username){
         var req = {
             roomid: room_number,
-            status: 'prepare',
             action: 'setname',
             version: version,
             username: username
         }
-        Ejoy.postJSON('/room', req, function(resp){
-            if(!resp.error){
-                name_span = document.getElementById(userid).children[0]            
-                name_span.innerHTML = username
-            }
-        });
-
+        Ejoy.postJSON('/room', req);
     }
 
     function set_rule(rule_num, enable){
         var req = {
             roomid: room_number,
-            status: 'prepare',
             action: 'set_rule',
             version: version,
 
             rule: rule_num,
             enable: enable
         }
-        Ejoy.postJSON('/room', req, function(resp){
-            set_room_content()
-        });
+        Ejoy.postJSON('/room', req);
 
     }
 
     function set_ready(){
         var req = {
             roomid: room_number,
-            status: 'prepare',
             action: 'ready',
             version: version,
             enable: !!user_ready,
         }
-        Ejoy.postJSON('/room', req, function(resp){
-           if(!resp.error){
-               set_room_content();
-           }
-        })
+        Ejoy.postJSON('/room', req)
     }
 
     function begin_game() {
         var req = {
             roomid: room_number,
-            status: "prepare",
             action: "begin_game",
             version:version,
         }
-        Ejoy.postJSON('/room', req, function(resp){
-            if(!resp.error){
-                set_room_content();
-            }
-        })
+        Ejoy.postJSON('/room', req)
     }
 });

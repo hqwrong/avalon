@@ -88,8 +88,6 @@ function api.begin_game(args)
         return {error = "不能开始游戏"}
     end
 
-    R.version = R.version + 1
-
     return roominfo(userid)
 end
 
@@ -188,6 +186,7 @@ local function update_loop()
     while true do
         if objproxy.is_dirty(R.room.p) or R.game and objproxy.is_dirty(R.game.p) then
             R.version = R.version + 1
+            Log.Info("incr version:", R.version)
             R.cache = nil
             objproxy.clean(R.room.p)
             if R.game then
