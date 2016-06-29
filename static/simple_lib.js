@@ -32,12 +32,12 @@ Ejoy.postJSON = function(url, req, callback){
            catch(e){
                return console.log(e)
            }
-           callback(data)
+           if (callback) {
+               callback(data)
+           }
        }
     }
     xmlhttp.send(JSON.stringify(req));
-    //xmlhttp.send(Ejoy.url_params(req));
-
 }
 
 Ejoy.getCookie = function(sKey){

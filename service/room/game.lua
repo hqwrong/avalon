@@ -270,7 +270,7 @@ function mt:visible_info(userid)
                 role_name = Rule.role[1].name -- 梅林
             end
             if role_name then
-                table.insert(ret, {uid = u.uid, role_name = role_name})
+                table.insert(ret, {uid = u.uid, role_name = role_name, name = u.name}) -- rm username
             end
         end
     end
@@ -289,11 +289,12 @@ function mt:users_info()
 end
 
 function mt:info(userid)
+    local u = self.users[userid]
     local ret = {}
     return {
         visible = self:visible_info(userid),
         users = self:users_info(),
-        role = self.users[userid] and self.users[userid].role or 0,
+        role = u and u.role or 0,
         evil_count = #self.uidlist - Rule.camp_good[#self.uidlist],
         history = self.history,
 
@@ -305,6 +306,9 @@ function mt:info(userid)
         nstage = self.stage_per_round[self.p.round],
         nsuccess = self.p.nsuccess,
         winner = self.p.winner,
+
+        role_name = u and Rule.role[u.role].name or "", -- to rm
+        role_desc = u and Rule.role[u.role].desc or "", -- to rm
     }
 end
 

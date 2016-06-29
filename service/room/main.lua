@@ -13,7 +13,7 @@ Log = require"log"
 local content = staticfile["room.html"]
 
 local ALIVETIME = 100 * 60 * 10 -- 10 minutes
-local PUSH_TIME = 100 * 60
+local PUSH_TIME = 100 * 30      -- 30s
 
 local roomid = ...
 
@@ -59,6 +59,7 @@ local function roominfo(userid)
         ret = R.room:info(userid)
         ret.status = "prepare"
     end
+    ret.version = R.version
     return json.encode(ret)
 end
 
@@ -86,6 +87,8 @@ function api.begin_game(args)
     if not R.game then
         return {error = "不能开始游戏"}
     end
+
+    R.version = R.version + 1
 
     return roominfo(userid)
 end
@@ -150,6 +153,7 @@ function api.request(args)
 		skynet.wakeup(co)
         R.push_tbl[userid] = nil
 	end
+
 	if version ~= 0 and version == R.version then
 		local co = coroutine.running()
 		R.push_tbl[userid] = co
@@ -163,16 +167,12 @@ function api.request(args)
 end
 
 function cmds.api(args)
-    Log.Info("api request", args.action)
+    Log.Info("api request:", args.action)
 	local f = args.action and api[args.action]
 	if not f then
 		return {error = "Invalid Action"}
 	end
 
-	if args.status ~= R.status then
-		-- todo push status
-		return roominfo(args.userid)
-	end
 	return f(args)
 end
 

@@ -38,7 +38,7 @@ function mt:enter(userid, username)
     local u = self:_get(userid)
 	if u then
 		u.timestamp = Skynet.now()
-		u.username = username
+		u.name = username
 	else
         self:_add(userid, username)
 	end

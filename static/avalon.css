@@ -204,3 +204,9 @@ input.room_number{
 .game .ground h4{}
 
 .game{display: none}
+
+.name_button {
+    margin-right: 10px;
+    border-bottom: solid;
+    
+}

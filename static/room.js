@@ -3,13 +3,15 @@
 // cookie 获取当前用户的user_id
 // click 操作的 绑定
 
-var room_number, version, userid, game_status;
+var room_number, userid, game_status;
+var version = 0;
 var user_ready = false;
 
 document.addEventListener("DOMContentLoaded", function(){
     userid = Ejoy.getCookie('userid');
     set_room_number();
     set_room_content(0, true);
+    //setTimeout(poll, 500)       // 0.5s
     bind_action()
 
     function set_room_number(){
@@ -17,6 +19,19 @@ document.addEventListener("DOMContentLoaded", function(){
         room_number = parseInt(pathname[pathname.length - 1], 10)
         Ejoy('room_number').html(room_number) 
     }
+    
+    // function poll(){
+    //     var req = {
+    //         roomid: room_number,
+    //         action: 'request',
+    //         version: version
+    //     }
+    //     Ejoy.postJSON('/room', req, function(resp){
+    //         console.log('request', resp)
+    //         version = resp.version
+
+    //     })        
+    // }
 
     function set_room_content(v, poll_begin){
         var req = {
@@ -33,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function(){
             version = resp.version;
             if(resp.status){
                 if(resp.status == "game"){
-
                     game_status = "game"
                     prepare_clear()
                     var avalon = new AvalonGame(userid)
@@ -41,15 +55,15 @@ document.addEventListener("DOMContentLoaded", function(){
                     return avalon.begin(resp)
                 }
             }
-            if(resp.player){
-                Ejoy('people_num').html(resp.player.length)
+            if(resp.users){
+                Ejoy('people_num').html(resp.users.length)
 
-                render_players(resp.player)
-                render_people_status(resp.player)
-                render_prepare_action(resp.player)
+                render_players(resp.users)
+                render_people_status(resp.users)
+                render_prepare_action(resp.users)
             }
-            if(resp.rule){
-                render_rules(resp.rule)
+            if(resp.rules){
+                render_rules(resp.rules)
             }
 
             render_game_status(resp.reason)
@@ -91,13 +105,13 @@ document.addEventListener("DOMContentLoaded", function(){
         for(var i=0; i < players.length; i++){
             var player = players[i]
             var player_str = '<div class="people_item" id="' + 
-                             player.userid + 
+                             player.uid + 
                              '"><span class="status_mark status_' + 
                              player.status +
                              '" style="color:' +
                              player.color +
                              '">' +
-                             player.username +
+                             player.name +
                              '</span></div>';
             players_str += player_str;
         } 
@@ -142,14 +156,15 @@ document.addEventListener("DOMContentLoaded", function(){
         var username="";
         for(var i=0; i< players.length; i++){
             var player = players[i]
-            if(player.userid == userid){
+            if(player.uid == userid){
                 user_ready = player.status
-                username = player.username
+                username = player.name
                 break;
             }
         }
         var action = user_ready == 0 ? "取消准备" :"准备";
         Ejoy('action_button').html(action)
+        Ejoy("name_button").html(username)
         document.getElementsByClassName('action_value')[0].value = username
     }
 
@@ -171,13 +186,18 @@ document.addEventListener("DOMContentLoaded", function(){
             }
             set_rule(rule_num, enabled)
         })
-        
-        Ejoy('action_button').on('click', function(e){
-            var name = e.target.previousElementSibling.value
+
+        Ejoy('name_button').on('click', function(e){
+            var name = window.prompt("您的昵称:")
             if(!name){
                 return alert("请输入名字");
             }
+            console.log("set username", name)
             set_user_name(name)
+        })
+
+        Ejoy('action_button').on('click', function(e){
+            set_ready(name)
         })
 
         Ejoy("begin_button").on("click", function (e){
@@ -216,7 +236,6 @@ document.addEventListener("DOMContentLoaded", function(){
             if(!resp.error){
                 name_span = document.getElementById(userid).children[0]            
                 name_span.innerHTML = username
-                set_ready()
             }
         });
 
@@ -226,7 +245,7 @@ document.addEventListener("DOMContentLoaded", function(){
         var req = {
             roomid: room_number,
             status: 'prepare',
-            action: 'set',
+            action: 'set_rule',
             version: version,
 
             rule: rule_num,
