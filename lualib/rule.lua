@@ -14,36 +14,33 @@ local M = {}
 math.randomseed(os.time())
 
 M.role = {
-	"梅林(正)",	-- 1
-	"派西维尔(正)",	-- 2
-	"兰斯洛特(正)", --3
-	"圆桌骑士(正)",	--4
-	"刺客(邪)", -- 5
-	"莫德雷德(邪)", -- 6
-	"莫甘娜(邪)", -- 7
-	"兰斯洛特(邪)", --8
-	"奥伯伦(邪)", -- 9
-	"爪牙(邪)", -- 10
+    [1] = {name = "梅林", camp = "正", desc = "看见除[莫德雷德]外的所有坏人"},
+	[2] = {name = "派西维尔", camp = "正", desc = "看见[梅林]和[莫甘娜]"},
+	[3] = {name = "正派的兰斯洛特", camp = "正", desc = ""},
+    [4] = {name = "圆桌骑士", camp = "正", desc = "一个单纯的好人"},
+    [5] = {name = "刺客", camp = "邪", desc = "刺杀梅林"},
+    [6] = {name = "莫德雷德", camp = "邪", desc = "梅林看不到他"},
+    [7] = {name = "莫甘娜", camp = "邪", desc = "假扮梅林，迷惑派西维尔"},
+    [8] = {name = "兰斯洛特", camp = "邪", desc = ""},
+    [9] = {name = "奥伯伦", camp = "邪", desc = "一个被鼓励的坏人"},
+    [10] = {name = "爪牙", camp = "邪", desc = "一个单纯的坏人"},
 }
 
-M.camp_name = {
-    "正", "正", "正", "正",  "邪", "邪", "邪", "邪","邪", "邪"
-}
-
+-- 1: 显示梅林（派西维尔规则）
 -- 4: 表示只能看见派别，不能看见身份
 -- 3： 兰斯洛特规则
 M.visible = {
---   梅林   派西维尔     兰(正)  骑士   刺客  莫德雷德       莫甘娜  兰(邪)    奥伯伦  爪牙
-   [1] = { false, false,     false,   false, true,  false,       true,   true,     true,  true },   --梅林
-   [2] = { 4,      false,     false,   false, true,  false,       4,       false,    false, false },  --派西维尔
-   [3] = { false, false,     false,   false, false, false,       false,   3,        false, false },  --兰(正)
-   [4] = { false, false,     false,   false, false, false,       false,  false,    false, false },  --正
-   [5] = { false, false,     false,   false, false, 4,            4,       true,     false, 4 },	  --刺客
-   [6] = { false, false,     false,   false, 4,      false,       4,       true,     false, 4 },   --莫德雷德
-   [7] = { false, false,     false,   false, 4,      4,            false,  true,     false, 4 },   --莫甘娜
-   [8] = { false, false,      3,       false, 3,      3,            3,       false,     false, 3 },      --兰(邪)
-   [9] = { false, false,     false,   false, false, false,       false,  false,    false, false },  --奥伯伦
-   [10] = { false, false,     false,   false, false, true,        true,   true,     false, true },	  --刺客
+--         梅林,    派西维尔,     兰(正),  骑士,    刺客,  莫德雷德,       莫甘娜,  兰(邪),  奥伯伦,  爪牙
+   [1] = { false, false,     false,   false,  4,    false,         4,      4,     4,      4},   --梅林
+   [2] = { 1    , false,     false,   false, false,  false,       1,       false,    false, false },  --派西维尔
+   [3] = { false  , false,     false,   false, false, false,       false,   3,        false, false },  --兰(正)
+   [4] = { false  , false,     false,   false, false, false,       false,  false,    false, false },  --正
+   [5] = { false  , false,     false,   false, false, 4,            4,       true,     false, 4 },	  --刺客
+   [6] = { false  , false,     false,   false, 4,      false,       4,       true,     false, 4 },   --莫德雷德
+   [7] = { false  , false,     false,   false, 4,      4,            false,  true,     false, 4 },   --莫甘娜
+   [8] = { false  , false,      3,      false, 3,      3,            3,       false,     false, 3 },      --兰(邪)
+   [9] = { false  , false,     false,   false, false, false,       false,  false,    false, false },  --奥伯伦
+   [10] = { false , false,     false,   false, false, 4,            4,      4,     4,        4 },	  --刺客
 }
 
 local camp_good = {
@@ -138,7 +135,7 @@ end
 
 M.pass_limit = 5
 
--- 没轮任务需要的投票数，负数表示至少两张反对票该任务才失败
+-- 每轮任务需要的投票数，负数表示至少两张反对票该任务才失败
 M.stage_per_round = {
     [5] = {2,3,2,3,3},
     [6] = {2,3,4,3,4},

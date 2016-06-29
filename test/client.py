@@ -147,17 +147,11 @@ class CmdClient(object):
 
 import urllib.request
 import urllib.parse
-import functools
 import json
 import http.cookies
 
-usercmds = []
-cmds = []
-def addusercmd(f):
-    usercmds.append((f.__name__, f))
-    return f
 def addcmd(f):
-    cmds.append((f.__name__, f))
+    f._avalon_cmd = True
     return f
 
 class AvalonClient(object):
@@ -166,19 +160,21 @@ class AvalonClient(object):
         self.uid = None
         self.roomid = None
         self.uid2name = {}
+        self.cl = None
 
-    def setuid(self, uid):
-        if uid != None:
-            for u in self.uid2name:
-                if str(u).endswith(str(uid)):
-                    uid = u
-                    break
-        self.uid = uid
+    def repl(self):
+        cl = CmdClient()
+        self.cl = cl
+        for k in dir(self):
+            v = getattr(self, k)
+            if hasattr(v, "_avalon_cmd"):
+                cl.addcmd(v)
+        return cl.repl()
 
-    def _request(self, path, **kargs):
-        if self.uid:
+    def _request(self, path, uid = None, **kargs):
+        if uid:
             c = http.cookies.SimpleCookie()
-            c["userid"] = self.uid
+            c["userid"] = uid
             cl_cookie = c.output(header = "")
         else:
             cl_cookie = ""
@@ -189,7 +185,6 @@ class AvalonClient(object):
         userid = c["userid"].value
         if userid not in self.uid2name:
             self.uid2name[userid] = "u"+ str(userid)
-            print("new userid:", userid)
             
         body = ""
         try:
@@ -198,10 +193,18 @@ class AvalonClient(object):
             pass
         return body
 
-    def _request_room(self, **kargs):
+    def _request_room(self, uid, **kargs):
         if not self.roomid:
             raise NameError("roomid is nil")
-        return self._request("/room", roomid = self.roomid, **kargs)
+        return self._request("/room", uid, roomid = self.roomid, **kargs)
+
+    def check(self, tmpl):
+        info = self.info()
+        for k,v in tmpl.items():
+            if info.get(k) != v:
+                pprint.pprint(info)
+                print("FAILED. [%s] %s != %s"%(k, info.get(k), v))
+                raise Exception()
 
     @addcmd
     def listuid(self):
@@ -213,141 +216,140 @@ class AvalonClient(object):
 
     @addcmd
     def help(self):
-        cl.help()
+        self.cl.help()
     
     ################### lobby
-    @addusercmd
-    def create(self):
-        ret = self._request("/lobby", action="create")
+    @addcmd
+    def create(self, uid):
+        ret = self._request("/lobby", uid, action="create")
         self.roomid = ret["room"]
         return ret
-    @addusercmd
-    def setname(self, name):
-        self.uid2name[self.uid] = name
-        return self._request("/lobby", action="setname", username=name)
-    @addusercmd
-    def getname(self):
-        return self._request("/lobby", action="getname")
+    @addcmd
+    def setname(self, uid, name):
+        self.uid2name[uid] = name
+        return self._request("/lobby", uid, action="setname", username=name)
+    @addcmd
+    def getname(self, uid):
+        return self._request("/lobby", uid, action="getname")
 
     #################### room
     @addcmd
     def room(self, roomid):
         self.roomid = roomid
-    @addusercmd
-    def join(self):
-        return self._request("/" + str(self.roomid))
-    @addusercmd
-    def set_rule(self, rule, enable = True):
-        return self._request_room(action="set_rule", rule=rule, enable=enable)
-    @addusercmd
-    def ready(self, enable = True):
-        return self._request_room(action="ready", enable = enable)
-    @addusercmd
-    def stage(self, stagelist):
-        return self._request_room(action="stage", stagelist=stagelist)
-    @addusercmd
-    def vote_audit(self, approve=True):
-        return self._request_room(action="vote_audit", approve=approve)
-    @addusercmd
-    def vote_quest(self, approve=True):
-        return self._request_room(action="vote_quest", approve=approve)
-    @addusercmd
-    def begin(self):
-        return self._request_room(action="begin_game")
-    @addusercmd
-    def info(self, version=0):
-        return self._request_room(action="request", version = version)
-    @addusercmd
-    def assasin(self, tuid):
-        return self._request_room(action="assasin", tuid = tuid)
+    @addcmd
+    def join(self, uid):
+        return self._request("/" + str(self.roomid), uid)
+    @addcmd
+    def set_rule(self, uid, rule, enable = True):
+        return self._request_room(uid, action="set_rule", rule=rule, enable=enable)
+    @addcmd
+    def ready(self, uid, enable = True):
+        return self._request_room(uid, action="ready", enable = enable)
+    @addcmd
+    def stage(self, uid, stagelist):
+        return self._request_room(uid, action="stage", stagelist=stagelist)
+    @addcmd
+    def vote_audit(self, uid, approve=True):
+        return self._request_room(uid, action="vote_audit", approve=approve)
+    @addcmd
+    def vote_quest(self, uid, approve=True):
+        return self._request_room(uid, action="vote_quest", approve=approve)
+    @addcmd
+    def begin(self, uid):
+        return self._request_room(uid, action="begin_game")
+    @addcmd
+    def info(self, uid=1, version=0):
+        return self._request_room(uid, action="request", version = version)
+    @addcmd
+    def assasin(self, uid, tuid):
+        return self._request_room(uid, action="assasin", tuid = tuid)
 
-avlon = AvalonClient("http://localhost:8001")
-cl = CmdClient(avlon)
-def wrapper(f):
-    def _wrap(inst, userid = None, *args):
-        inst.setuid(userid)
-        ret = f(inst, *args)
-        inst.setuid(None)
-        return ret
-    return _wrap
+    ################# combined commands
+    @addcmd
+    def mkroom(self, n = 6, rules = []):
+        for _ in range(n):
+            self.newuser()
 
-for name,f in usercmds:
-    cl.addcmd(wrapper(f), name)
-for name,f in cmds:
-    cl.addcmd(f, name)
+        uids = [uid for uid in self.listuid()]
+        owner=uids[0]
+        roomid = self.create(owner)["room"]
+        self.room(roomid)
+        for uid in uids:
+            self.join(uid)
+            self.ready(uid)
+        for r in rules:
+            self.set_rule(owner, r, True) # 梅林与刺客
+        self.begin(owner)
+        return uids
+        
+    @addcmd
+    def doaudit(self, n_audit_no = 0, stagelist = None):
+        info = self.info()
+        uids = [u["uid"] for u in info["users"]]
+        if not stagelist:
+            stagelist = [uids[i] for i in range(info["nstage"])]
+        self.stage(info["leader"], stagelist)
 
-def brk():
-    cl.docmd("info", [1])
-    sys.stdin.read(1)
+        for i,uid in enumerate(uids):
+            self.vote_audit(uid, False if i < n_audit_no else True)
+    @addcmd
+    def doquest(self, n_vote_no = 0):
+        info = self.info()
+        uids = [u["uid"] for u in info["users"]]
+        for i, uid in enumerate(uids):
+            self.vote_quest(uid, False if i < n_vote_no else True)
+
+def test1(cl):
+    n = 6
+    cl.mkroom(n, [1])           # 梅林规则
+
+    cl.check({"pass":1, "round":1, "nsuccess":0})
+
+    cl.doaudit(0)
+    cl.doquest(0)
+    cl.check({"pass":1, "round":2, "nsuccess":1})
+
+    cl.doaudit(int(n/2) + 1)
+    cl.doaudit(int(n/2) - 1)
+    cl.check({"pass":2, "round":2})
+    cl.doquest(1)
+    cl.check({"pass":1, "round":3, "nsuccess":1})
+
+    for _ in range(5):          # 流产
+        cl.doaudit(n)
+    cl.check({"pass":1, "round":4, "nsuccess":1})
     
-n = 6
-for _ in range(n):
-    cl.docmd("newuser")
-uids = [uid for uid in cl.docmd("listuid")]
-owner=uids[0]
-roomid = cl.docmd("create", [owner])["room"]
-cl.docmd("room", [roomid])
-for uid in uids:
-    cl.docmd("join", [uid])
-    cl.docmd("ready", [uid])
-cl.docmd("set_rule", [owner, 1, True]) # 梅林与刺客
-cl.docmd("begin", [owner])
 
-# 全票通过, 任务成功
-info = cl.docmd("info", [owner])
-cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-for uid in uids:
-    cl.docmd("vote_audit", [uid, True])
-info = cl.docmd("info", [owner])
-for uid in info["stage"]:
-    cl.docmd("vote_quest", [uid, True])
+    cl.doaudit(0)
+    cl.doquest(0)
 
-# 大部分通过，任务失败
-info = cl.docmd("info", [owner])
-cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-nyes = int(n/2)+1
-for i in range(nyes):
-    cl.docmd("vote_audit", [uids[i], True])
-for i in range(nyes, n):
-    cl.docmd("vote_audit", [uids[i], False])
-info = cl.docmd("info", [owner])
-for i,uid in enumerate(info["stage"]):
-    cl.docmd("vote_quest", [uid, True if i != 0 else False])
+    cl.doaudit(0)
+    cl.doquest(n)
 
-# 大部分不通过，流产
-for _ in range(5):
-    info = cl.docmd("info", [owner])
-    cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-    nyes = int(n/2)
-    for i in range(nyes):
-        cl.docmd("vote_audit", [uids[i], True])
-    for i in range(nyes, n):
-        cl.docmd("vote_audit", [uids[i], False])
+    cl.check({"mode":"assasin"})
+    for u in cl.info()["users"]:
+        role = cl.info(u["uid"])["role"]
+        if role == 1:
+            meilin = u["uid"]
+        elif role == 5:
+            assasor = u["uid"]
+    cl.assasin(assasor, meilin)
+    cl.check({"mode":"end", "winner":"evil"})
 
-# 全部不通过，第二轮任务成功
-info = cl.docmd("info", [owner])
-cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-for uid in uids:
-    cl.docmd("vote_audit", [uid, False])
-info = cl.docmd("info", [owner])
-cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-for uid in uids:
-    cl.docmd("vote_audit", [uid, True])
-info = cl.docmd("info", [owner])
-for i,uid in enumerate(info["stage"]):
-    cl.docmd("vote_quest", [uid, True])
+    print("梅林规则测试 通过!")
 
-# repeat
-info = cl.docmd("info", [owner])
-cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-for uid in uids:
-    cl.docmd("vote_audit", [uid, False])
-info = cl.docmd("info", [owner])
-cl.docmd("stage", [info["leader"], [info["users"][i]["uid"] for i in range(info["nstage"])]])
-for uid in uids:
-    cl.docmd("vote_audit", [uid, True])
-info = cl.docmd("info", [owner])
-for i,uid in enumerate(info["stage"]):
-    cl.docmd("vote_quest", [uid, True])
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) <= 1 or sys.argv[1] not in ("repl", "test"):
+        print("Usage: %s repl|test"%sys.argv[0])
+        sys.exit()
+    cl = AvalonClient("http://localhost:8001")
+    if sys.argv[1] == "repl":
+        cl.repl()
+    else:
+        test1(cl)
+        print("测试 通过!")
 
-cl.repl()
+
+
+

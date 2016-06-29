@@ -1,4 +1,5 @@
 local skynet = require "skynet"
+local Log = require"log"
 local math = math
 local utf8 = utf8
 local table = table
@@ -19,7 +20,8 @@ local function create_userid()
 	else
 		lastid = lastid + 1
 	end
-	return tostring(lastid), new_username(lastid)
+    Log.Info("new userid", lastid)
+	return lastid, new_username(lastid)
 end
 
 local function get_username(userid)

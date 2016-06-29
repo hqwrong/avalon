@@ -98,7 +98,7 @@ end
 
 function mt:end_game(win)
     self.p.mode = "end"
-    self.p.winner = win and "正" or "邪"
+    self.p.winner = win and "good" or "evil"
 end
 
 function mt:resolve()
@@ -259,16 +259,18 @@ function mt:visible_info(userid)
     for _, u in pairs(self.users) do
         local visible = role_visible == true and true or role_visible[u.role]
         if visible and u.uid ~= userid then
-            local role_name
+            local r = Rule.role[u.role]
             if visible == true then
-                role_name = Rule.role[u.role]
+                role_name = r.name
             elseif visible == 4 then -- 只能看见阵营名
-                role_name = Rule.camp_name[u.role]
+                role_name = r.camp
             elseif visible == 3 and self.rules[8] then -- 兰斯洛特规则
-                role_name = Rule.role[u.role]
+                role_name = r.name
+            elseif visible == 1 then -- 派西维尔规则
+                role_name = Rule.role[1].name -- 梅林
             end
             if role_name then
-                table.insert(ret, {username = u.name, role = role_name})
+                table.insert(ret, {uid = u.uid, role_name = role_name})
             end
         end
     end

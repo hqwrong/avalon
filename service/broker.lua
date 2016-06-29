@@ -42,7 +42,7 @@ local userid_header = setmetatable({} , { __mode = "kv",
 	__index = function(t,k)
 		local v = {
 			["Set-Cookie"] = string.format(
-				"userid=%d; Path=/; Max-Age=2592000", k),
+				"userid=%s; Path=/; Max-Age=2592000", k),
 			["Content-Type"] = "text/html; charset=utf-8"
 		}
 		t[k] = v
