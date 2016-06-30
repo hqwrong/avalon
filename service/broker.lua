@@ -29,7 +29,7 @@ local function get_userid(header)
 	if cookie then
 		for k,v in cookie:gmatch " *(.-)=([^;]*);?" do
 			if k == "userid" then
-				userid = v
+				userid = tonumber(v)
 				break
 			end
 		end
@@ -56,6 +56,24 @@ end
 
 action_method["/lobby"] = function(body, userid, username)
 	return skynet.call(lobby, "lua", "api", userid, username, body)
+end
+
+action_method["/poll"] = function(body, userid, username)
+	local args = body
+	if not args then
+		return '{"status":"error","error":"Invalid Action"}'
+	end
+	local roomid = args.roomid
+	if not roomid then
+		return '{"status":"error","error":"Invalid Room id"}'
+	end
+	local r = skynet.call(roomkeeper, "lua", "query", roomid)
+	if not r then
+		return '{"status":"error","error":"Room not open"}'
+	end
+	args.userid = userid
+    args.action = "poll"
+    return skynet.call(r, "lua", "api", args)
 end
 
 action_method["/room"] = function(body, userid, username)
@@ -87,8 +105,9 @@ end
 local function handle_socket(id)
 	-- limit request body size to 8192 (you can pass nil to unlimit)
 	local code, url, method, header, body = httpd.read_request(sockethelper.readfunc(id), 8192)
+    local userid, username = get_userid(header)
 
-    Log.Infof("http %s: url[%s],body[%s]", method, url, body)
+    Log.Infof("http %s, url: %s, body: %s, userid: %s", method, url, body, userid)
     if body and body ~= "" then
         body = json.decode(body)
     end
@@ -112,8 +131,6 @@ local function handle_socket(id)
 					response(id, 404, "404 Not found")
 				end
 			else
-                local userid, username = get_userid(header)
-                Log.Infof("broker request: action[%s], userid[%s], username[%s]", action, userid, username)
 				local f = action_method[action] or enter_room
                 
                 local ret, c = f(body, userid, username, action)

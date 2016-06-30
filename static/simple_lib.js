@@ -19,6 +19,8 @@ Ejoy.url_params = function(dict){
   }
   return str.slice(0, -1)
 }
+
+var pollxhr, pollcb
 Ejoy.postJSON = function(url, req, callback){
     var xmlhttp = new XMLHttpRequest();   // new HttpRequest instance 
     xmlhttp.open("POST", url);
@@ -38,6 +40,20 @@ Ejoy.postJSON = function(url, req, callback){
        }
     }
     xmlhttp.send(JSON.stringify(req));
+
+    // Ugly but Works!
+    if (url == "/poll"){
+        pollxhr = xmlhttp
+        pollcb  = callback
+    }else if (pollxhr) {
+        var xhr = pollxhr
+        var cb  = pollcb
+        pollxhr = null
+        pollcb  = null
+
+        xhr.abort()
+        cb("abort")
+    }
 }
 
 Ejoy.getCookie = function(sKey){
@@ -58,6 +74,9 @@ var init = Ejoy.fn.init = function(selector){
 
 init.prototype = Ejoy.fn;
 
+Ejoy.fn.val = function(){
+    return this.dom[0].innerHTML
+}
 
 Ejoy.fn.html = function(val){
   for(var i = 0; i< this.len; i++){

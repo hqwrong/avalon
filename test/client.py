@@ -259,7 +259,7 @@ class AvalonClient(object):
         return self._request_room(uid, action="begin_game")
     @addcmd
     def info(self, uid=1, version=0):
-        return self._request_room(uid, action="request", version = version)
+        return self._request_room(uid, action="poll", version = version)
     @addcmd
     def assasin(self, uid, tuid):
         return self._request_room(uid, action="assasin", tuid = tuid)
@@ -281,6 +281,14 @@ class AvalonClient(object):
             self.set_rule(owner, r, True) # 梅林与刺客
         self.begin(owner)
         return uids
+
+    @addcmd
+    def dostage(self, stagelist = None):
+        info = self.info()
+        uids = [u["uid"] for u in info["users"]]
+        if not stagelist:
+            stagelist = [uids[i] for i in range(info["nstage"])]
+        self.stage(info["leader"], stagelist)
         
     @addcmd
     def doaudit(self, n_audit_no = 0, stagelist = None):
@@ -315,8 +323,10 @@ def test1(cl):
     cl.doquest(1)
     cl.check({"pass":1, "round":3, "nsuccess":1})
 
-    for _ in range(5):          # 流产
+    for _ in range(4):
         cl.doaudit(n)
+    cl.dostage()                # 强制通过提议
+    cl.doquest(n)
     cl.check({"pass":1, "round":4, "nsuccess":1})
     
 
@@ -334,7 +344,7 @@ def test1(cl):
         elif role == 5:
             assasor = u["uid"]
     cl.assasin(assasor, meilin)
-    cl.check({"mode":"end", "winner":"evil"})
+    cl.check({"mode":"end", "winner":"邪"})
 
     print("梅林规则测试 通过!")
 

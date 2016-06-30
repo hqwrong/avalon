@@ -24,7 +24,7 @@ end
 
 function ppf(logtype, fmt, ...)
     local info = debug.getinfo(2+1, "Sl")
-    
+
     print(("[%s %s %s]%s:%s:"):format(fmttime(), logtype, Tag, info.source, info.currentline),  string.format(fmt, ...))
 end
 

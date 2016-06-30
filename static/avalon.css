@@ -12,7 +12,7 @@ ul {
 }
 
 .wrapper{
-  border: 1px dashed #39da08;
+  border: 1px dotted #39da08;
   margin: 15px auto;
   padding: 10px;
 }
@@ -205,8 +205,26 @@ input.room_number{
 
 .game{display: none}
 
-.name_button {
-    margin-right: 10px;
-    border-bottom: solid;
-    
+.button {
+    margin: auto 15px;
+    border: 1px dashed #39da08;
+    padding: 5px;
+}
+
+.hist-table td {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+.hist-table {
+    text-align:left;
+    border-collapse: collapse;
+}
+
+.hist-fail {
+    color: #E06767;
+}
+
+.hist-succ {
+    color: #0DF176;
 }

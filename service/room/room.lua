@@ -35,6 +35,7 @@ function mt:_add(userid, username)
 end
 
 function mt:enter(userid, username)
+    Log.Info("enter", userid, username, type(userid))
     local u = self:_get(userid)
 	if u then
 		u.timestamp = Skynet.now()
@@ -55,7 +56,10 @@ end
 function mt:set_ready(userid, enable)
     local u = self:_get(userid)
     if not u then
-        Log.Error("wrong userid", userid)
+        Log.Error("wrong userid", userid, type(userid))
+        for k in pairs(self.p.users) do
+            print(">>", k)
+        end
         return
     end
 

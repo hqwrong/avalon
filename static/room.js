@@ -5,11 +5,9 @@
 
 var room_number, userid, game;
 var version = 0;
-var user_ready = false;
-
 
 document.addEventListener("DOMContentLoaded", function(){
-    userid = Ejoy.getCookie('userid');
+    userid = Number(Ejoy.getCookie('userid'));
     set_room_number();
     setTimeout(poll, 500)       // 0.5s
     bind_action()
@@ -23,13 +21,16 @@ document.addEventListener("DOMContentLoaded", function(){
     function poll(){
         var req = {
             roomid: room_number,
-            action: 'request',
+            action: 'poll',
             version: version
         }
-        Ejoy.postJSON('/room', req, function(resp){
+        Ejoy.postJSON('/poll', req, function(resp){
             console.log('request', resp)
+            if (resp == "abort") {
+                return poll()
+            }
             if (!resp.status) {
-                return
+                return poll()
             }
 
             version = resp.version
@@ -61,7 +62,7 @@ document.addEventListener("DOMContentLoaded", function(){
         render_rules(resp.rules)
 
         render_game_status(resp.reason)
-        render_begin_button(resp.can_game)
+        render_begin_button(resp)
     }
 
     function render_game_status(reason) {
@@ -72,8 +73,11 @@ document.addEventListener("DOMContentLoaded", function(){
         }
     }
 
-    function render_begin_button(can_game) {
-        if (can_game) {
+    function render_begin_button(resp) {
+        if (resp.owner != userid) {
+            return
+        }
+        if (resp.can_game) {
             Ejoy("begin_button").html("开始")
         } else {
             Ejoy("begin_button").html("")
@@ -141,6 +145,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
     function render_prepare_action(players){
         var username="";
+        var user_ready;
         for(var i=0; i< players.length; i++){
             var player = players[i]
             if(player.uid == userid){
@@ -152,7 +157,6 @@ document.addEventListener("DOMContentLoaded", function(){
         var action = user_ready == 0 ? "取消准备" :"准备";
         Ejoy('action_button').html(action)
         Ejoy("name_button").html(username)
-        document.getElementsByClassName('action_value')[0].value = username
     }
 
     function bind_action(){
@@ -178,7 +182,7 @@ document.addEventListener("DOMContentLoaded", function(){
         })
 
         Ejoy('action_button').on('click', function(e){
-            set_ready(name)
+            set_ready()
         })
 
         Ejoy("begin_button").on("click", function (e){
@@ -214,7 +218,7 @@ document.addEventListener("DOMContentLoaded", function(){
             roomid: room_number,
             action: 'ready',
             version: version,
-            enable: !!user_ready,
+            enable: Ejoy('action_button').val() == "准备",
         }
         Ejoy.postJSON('/room', req)
     }

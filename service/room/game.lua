@@ -21,70 +21,30 @@ local function _total(votes)
     return total, yes
 end
 
-local function _seri(...)
-    local cache = {}
-    local function _seri(el, path)
-        if type(el) ~= "table" then
-            if type(el) == "string" then
-                return el
-            else
-                return tostring(el)
-            end
-        end
-
-        if cache[el] then return cache[el] end
-        cache[el] = path == "" and "." or path
-
-        local tmp = {}
-        for i,v in ipairs(el) do
-            table.insert(tmp, _seri(v, path.."."..i))
-        end
-        return string.format("[%s]", table.concat(tmp, ", "))
-    end
-
-    local output = {}
-    for i=1,select("#", ...) do
-        table.insert(output, _seri(select(i, ...), ""))
-    end
-    return table.concat(output, " ")
-end
-
-local hist_handles = {
-    pass_limit = function (self) return Rule.pass_limit end,
-    leader = function (self) return self:get_name(self.p.leader) end,
-    stage = function (self)
-        local l = {}
-        for _,uid in ipairs(self.p.stage) do
-            table.insert(l, self:get_name(uid))
-        end
-        return _seri(l)
-    end,
-
-    vote_yes = function (self)
-        local l = {}
+function mt:add_history(htype)
+    local function addvotes(l)
+        local no_votes = {}
+        local yes_votes = {}
         for uid,flag in pairs(self.p.votes) do
-            if flag then table.insert(l, self:get_name(uid)) end
+            table.insert(flag and yes_votes or no_votes, self:get_name(uid))
         end
-        return _seri(l)
-    end,
-
-    vote_no = function (self)
-        local l = {}
-        for uid,flag in pairs(self.p.votes) do
-            if not flag then table.insert(l, self:get_name(uid)) end
-        end
-        return _seri(l)
+        l.no_votes = table.concat(no_votes, ", ")
+        l.yes_votes = table.concat(yes_votes, ", ")
+        return l
     end
-}
-
-function mt:add_history(...)
-    local l = {...}
-    for i,s in ipairs(l) do
-        l[i] = string.gsub(s, "{([%w_]+)}", function (w) return hist_handles[w](self) end)
+    local l = {}
+    l.no = ("%d.%d"):format(self.p.round, self.p.pass)
+    if htype == "qs" or htype == "qf" then
+        l.htype = htype == "qs" and "任务成功" or "任务失败"
+        local total, yes = _total(self.p.votes)
+        l.n = total-yes
+    elseif htype == "ps" or htype == "pf" then
+        l.htype = htype == "ps" and "提议通过" or "提议流产"
+        l.leader = self:get_name(self.p.leader)
+        addvotes(l)
     end
 
-    local hist = ("%d.%d  "):format(self.p.round, self.p.pass) .. table.concat(l, "\n\t")
-    table.insert(self.history, hist)
+    table.insert(self.history, l)
 end
 
 function mt:get_name(uid)
@@ -96,9 +56,13 @@ function mt:enter_quest()
     self.p.votes = {}
 end
 
+function mt:enter_audit()
+    self.p.mode = "audit"
+end
+
 function mt:end_game(win)
     self.p.mode = "end"
-    self.p.winner = win and "good" or "evil"
+    self.p.winner = win and "正" or "邪"
 end
 
 function mt:resolve()
@@ -113,11 +77,6 @@ function mt:resolve()
 end
 
 function mt:next_pass()
-    if self.p.pass >= Rule.pass_limit then
-        self:add_history("任务失败! 提案连续{pass_limit}次没有通过")
-        return self:next_round(false)
-    end
-
     self.p.mode = "plan"
     self.p.stage = {}
     self.p.votes = {}
@@ -164,10 +123,10 @@ function mt:vote_audit(userid, approve)
     end
 
     if yes > total/2 then
-        self:add_history("提议通过. {leader} 提议 {stage}", "赞同者: {vote_yes}", "反对者: {vote_no}")
+        self:add_history("ps")
         self:enter_quest()
     else
-        self:add_history("提议否决! {leader} 提议 {stage}", "赞同者: {vote_yes}", "反对者: {vote_no}")
+        self:add_history("pf")
         self:next_pass()
     end
 end
@@ -190,10 +149,10 @@ function mt:vote_quest(userid, approve)
 
     local needtwo = self.stage_per_round[self.p.round] < 0
     if yes == total or needtwo and yes == total - 1 then
-        self:add_history("任务成功.  参与者: {stage}", ("出现%d张失败票"):format(total-yes))
+        self:add_history("qs")
         self:next_round(true)
     else
-        self:add_history("任务失败! 参与者: {stage}", ("出现%d张失败票"):format(total-yes))
+        self:add_history("qf")
         self:next_round(false)
     end
 end
@@ -228,7 +187,12 @@ function mt:stage(userid, stagelist)
     end
 
     self.p.stage = stagelist
-    self.p.mode = "audit"
+    if self.p.pass < Rule.pass_limit then
+        self:enter_audit()
+    else
+        self:add_history("ps")
+        self:enter_quest()
+    end
 end
 
 function mt:assasin(userid, tuid)
@@ -270,7 +234,7 @@ function mt:visible_info(userid)
                 role_name = Rule.role[1].name -- 梅林
             end
             if role_name then
-                table.insert(ret, {uid = u.uid, role_name = role_name, name = u.name}) -- rm username
+                table.insert(ret, {uid = u.uid, role_name = role_name, name = u.name}) -- to rm username
             end
         end
     end
@@ -283,6 +247,18 @@ function mt:users_info()
     for _,uid in ipairs(self.uidlist) do
         local u = self.users[uid]
         table.insert(ret, {uid = u.uid, name = u.name})
+        if self.p.mode == "end" then -- to rm
+            ret[#ret].role_name = Rule.role[u.role].name
+        end
+    end
+
+    return ret
+end
+
+function mt:votes_info()
+    local ret = {}
+    for uid in pairs(self.p.votes) do
+        table.insert(ret, uid)
     end
 
     return ret
@@ -298,6 +274,7 @@ function mt:info(userid)
         evil_count = #self.uidlist - Rule.camp_good[#self.uidlist],
         history = self.history,
 
+        votes = self:votes_info(),
         round = self.p.round,
         pass = self.p.pass,
         leader = self.p.leader,
