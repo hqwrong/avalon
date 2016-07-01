@@ -212,13 +212,13 @@ input.room_number{
 }
 
 .hist-table td {
-    padding-top: 0px;
-    padding-bottom: 0px;
+    align : left;
 }
 
 .hist-table {
     text-align:left;
     border-collapse: collapse;
+    width : 100%;
 }
 
 .hist-fail {

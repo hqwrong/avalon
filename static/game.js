@@ -227,7 +227,7 @@ AvalonGame.fn.render_history = function(resp){
                 } else if (k == "yes_votes") {
                     k = "赞同者:"
                 }
-                hist += "<tr><td>" + k + "</td>" + "<td><pre>" + v + "</pre></td></tr>"
+                hist += "<tr><td>" + k + "</td>" + "<td><div>"+ v + "</div></td></tr>"
             }
         }
         hist += "</table>"
