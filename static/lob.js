@@ -1,3 +1,11 @@
+function isWeixinBrowser(){
+  return /micromessenger/.test(navigator.userAgent.toLowerCase())
+}
+
+if (isWeixinBrowser()) {
+    document.documentElement.innerHTML = "请在浏览器中打开，么么哒～"
+}
+
 document.addEventListener("DOMContentLoaded", function(){
     Ejoy('enter-room').on('click', function(){
         Ejoy('lobby-action').css("display: block;")

@@ -215,7 +215,13 @@ AvalonGame.fn.render_history = function(resp){
         
         hist += "<p class=" + ((h.htype == "任务失败" || h.htype=="提议流产")? "'hist-fail'":"'hist-succ'") + ">" + h.no + " " + h.htype + "</p>";
         hist += "<table class='hist-table'>"
+        sorted = []
         for (var k in h) {
+            sorted[sorted.length] = k
+        }
+        sorted.sort()
+        for (var j in sorted) {
+            k = sorted[j]
             if (k != "no" && k != "htype") {
                 v = h[k]
                 if (k == "n")
