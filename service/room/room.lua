@@ -102,6 +102,17 @@ function mt:info()
     return info
 end
 
+local function shuffle(l)
+    local tmp
+    local sz = #l
+    for i = 1,sz do
+        local j = math.random(0, sz - i) + i
+        tmp = l[i]
+        l[i] = l[j]
+        l[j] = tmp
+    end
+end
+
 function mt:begin_game(userid)
     if userid ~= self.owner then
         Log.Warnf("only owner can begin game, owner[%s],uid[%s]", self.owner, userid)
@@ -113,14 +124,18 @@ function mt:begin_game(userid)
         return
     end
 
+    shuffle(roles)
     local users = {}
+    local viewers = {}
     for uid,u in pairs(self.p.users) do
         if u.status == READY then
             users[uid] = {name = u.name,  uid = u.uid, role = table.remove(roles)}
+        else
+            viewers[uid] = {name = u.name, uid = u.uid}
         end
     end
 
-    self.game = Game.new(self.p.rules, users)
+    self.game = Game.new(self.p.rules, users, viewers)
     return self.game
 end
 

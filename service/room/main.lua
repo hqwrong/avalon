@@ -13,7 +13,7 @@ Log = require"log"
 local content = staticfile["room.html"]
 
 local ALIVETIME = 100 * 60 * 10 -- 10 minutes
-local PUSH_TIME = 100 * 30      -- 30s
+local PUSH_TIME = 100 * 20      -- 20s
 
 local roomid = ...
 
@@ -122,7 +122,7 @@ end
 
 function api.assasin(args)
     local userid = args.userid
-    local tuid = args.tuid
+    local tuid = args.stagelist[1]
 
     R.game:assasin(userid, tuid)
 end

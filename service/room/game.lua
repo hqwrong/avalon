@@ -28,20 +28,30 @@ function mt:add_history(htype)
         for uid,flag in pairs(self.p.votes) do
             table.insert(flag and yes_votes or no_votes, self:get_name(uid))
         end
-        l.no_votes = table.concat(no_votes, ", ")
-        l.yes_votes = table.concat(yes_votes, ", ")
+        l.votes_no = table.concat(no_votes, ", ")
+        l.votes_yes = table.concat(yes_votes, ", ")
         return l
     end
+    
+    local function addstage(l)
+        l.stage = {}
+        for _, uid in ipairs(self.p.stage) do
+            table.insert(l.stage, self:get_name(uid))
+        end
+    end
+
     local l = {}
     l.no = ("%d.%d"):format(self.p.round, self.p.pass)
     if htype == "qs" or htype == "qf" then
         l.htype = htype == "qs" and "任务成功" or "任务失败"
         local total, yes = _total(self.p.votes)
         l.n = total-yes
+        addstage(l)
     elseif htype == "ps" or htype == "pf" then
         l.htype = htype == "ps" and "提议通过" or "提议流产"
         l.leader = self:get_name(self.p.leader)
         addvotes(l)
+        addstage(l)
     end
 
     table.insert(self.history, l)
@@ -65,15 +75,27 @@ function mt:end_game(win)
     self.p.winner = win and "正" or "邪"
 end
 
+function mt:is_good_win()
+    return self.p.nsuccess > Rule.nround/2
+end
+
+function mt:is_evil_win()
+    return (self.p.round - self.p.nsuccess) > Rule.nround/2
+end
+
 function mt:resolve()
-    for _,u in pairs(self.users) do
-        if u.role == 5 then     -- 刺客
-            self.p.mode = "assasin"
-            return
+    local win = self:is_good_win()
+
+    if win then
+        for _,u in pairs(self.users) do
+            if u.role == 5 then     -- 刺客
+                self.p.mode = "assasin"
+                return
+            end
         end
     end
 
-    self:end_game(self.p.nsuccess > Rule.nround/2)
+    self:end_game(win)
 end
 
 function mt:next_pass()
@@ -92,22 +114,19 @@ function mt:next_pass()
 end
 
 function mt:next_round(success)
-    if self.p.round == #self.stage_per_round then
+    if success then
+        self.p.nsuccess = self.p.nsuccess + 1
+    end
+
+    if self:is_good_win() or self:is_evil_win() then
         self:resolve()
         return
     end
 
     self.p.round = self.p.round + 1
     self.p.pass = 0
-    if success then
-        self.p.nsuccess = self.p.nsuccess + 1
-    end
 
-    if self.p.round > #self.stage_per_round then
-        self:resolve()
-    else
-        self:next_pass()
-    end
+    self:next_pass()
 end
 
 function mt:vote_audit(userid, approve)
@@ -207,11 +226,11 @@ function mt:assasin(userid, tuid)
         return
     end
 
-    local tu = self.users[userid]
+    local tu = self.users[tuid]
     if tu and tu.role == 1 then
-        self:end_game(true)
+        self:end_game(false)    -- 邪方胜利
     else
-        self:end_game(false)
+        self:end_game(true)     -- 正方胜利
     end
 end
 
@@ -265,6 +284,10 @@ function mt:votes_info()
 end
 
 function mt:info(userid)
+    if not self.viewers[userid] and not self.users[userid] then
+        return {}
+    end
+
     local u = self.users[userid]
     local ret = {}
     return {
@@ -291,28 +314,17 @@ end
 
 local M = {}
 
-local function shuffle(l)
-    local tmp
-    local sz = #l
-    for i = 1,sz do
-        local j = math.random(0, sz - i) + i
-        tmp = l[i]
-        l[i] = l[j]
-        l[j] = tmp
-    end
-end
-
-function M.new(rules, users)
+function M.new(rules, users, viewers)
     local self = setmetatable({}, mt)
 
     self.rules = rules
     self.users = users
+    self.viewers = viewers
     self.uidlist = {}
 
     for _,u in pairs(users) do
         table.insert(self.uidlist, u.uid)
     end
-    shuffle(self.uidlist)
 
     self.history = {}
     -- 每轮的任务投票数
@@ -323,7 +335,7 @@ function M.new(rules, users)
         round = 1,          -- 第n轮
         pass =1,            -- 第n次提案
         nsuccess = 0,  -- 成功任务数
-        leader = self.uidlist[1], -- 选举阶段的领袖
+        leader = self.uidlist[math.random(#self.uidlist)], -- 选举阶段的领袖
         stage = {},         -- 被提名的人
         winner = nil,          -- 胜利方
         mode = "plan"      -- plan/audit/quest/end/assasin

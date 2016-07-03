@@ -1,5 +1,14 @@
 var stage_list = [] 
 
+var StagePerRound = {
+    5 : [2,3,2,3,3],
+    6 : [2,3,4,3,4],
+    7 : [2,3,3,'*4',4],
+    8 : [3,4,4,'*5',5],
+    9 : [3,4,4,'*5',5],
+    10 : [3,4,4,'*5',5]
+}
+
 var AvalonGame = function(){
     this.status = "game";
     this.game_bind_action()
@@ -21,7 +30,8 @@ AvalonGame.fn.update = function (resp){
     gameinfo = resp
     self.update_info(resp)
 
-    Ejoy("stage_title").html("共" + resp.evil_count + "个反方")
+    var n = resp.users.length
+    Ejoy("stage_title").html("人员组成:" + resp.evil_count + "/" + n + " 任务组成:" + StagePerRound[n].concat(" "))
     Ejoy("stage_desc").html("第 "+ resp.round + " 个任务, 第 " + resp.pass + " 次提案" )
 
     this.render_role_info(resp)
@@ -228,10 +238,12 @@ AvalonGame.fn.render_history = function(resp){
                     k = "否决票数:"
                 else if (k == "leader") {
                     k = "提案者:"
-                } else if (k == "no_votes") {
+                } else if (k == "votes_no") {
                     k = "否决者:"
-                } else if (k == "yes_votes") {
+                } else if (k == "votes_yes") {
                     k = "赞同者:"
+                } else if (k == "stage") {
+                    k = "候选人:"
                 }
                 hist += "<tr><td>" + k + "</td>" + "<td><div>"+ v + "</div></td></tr>"
             }

@@ -138,8 +138,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
        var status = "";
        status += '<div><span>' + ready   + '</span>人准备好</div>' +
-                 '<div><span>' + prepare + '</span>人正在准备</div>' +
-                 '<div><span>' + watch   + '</span>人旁观</div>'
+                 '<div><span>' + prepare + '</span>人旁观</div>'
        Ejoy('people_status').html(status)
     }
 
